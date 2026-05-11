@@ -19,6 +19,8 @@ class CityRouting():
         Initializes the City with the loaded graph
         """
         self.graph = nx_graph
+        self.v_s = None
+        self.v_s_next = None
 
     def inject_missing_attributes(self,weather):
         """
@@ -26,7 +28,7 @@ class CityRouting():
         distribution was chosen, this should be reconsidered 
         when we'll do experiments
         
-        :param self: CityGrid object
+        :param self: CityRouting object
         :param seed: seed value 
         """
 
@@ -35,6 +37,7 @@ class CityRouting():
             data['cross_slope'] = np.random.uniform(0,2.5)
             data['traversability'] = np.random.choice([0,1])
             data['tactile'] = np.random.choice([0,1])
+            data['p_crowd'] = np.random.uniform(0,0.4)
 
             if 'length' not in data : 
                 data['lenght'] = 1
@@ -44,7 +47,7 @@ class CityRouting():
         """
         Computes cost of each edge depending on the chosen weights
         
-        :param self: CityGrid object
+        :param self: CityRouting object
         :param w: weights dictionary : w = {"w":w0,"l":w1,"s":w2,"sf":w3}
         :param weather: weather state (initialized at the begining)
         """
@@ -66,38 +69,46 @@ class CityRouting():
         for i,(u,v,k,data) in enumerate(edges_list):
             data['cost'] = cost[i]
     
-    def plot_city_grid(self, filename="map.html"):
+    def plot_city_grid(self, filename="map.html",path=None):
         """
         Generates an html file displaying the graph 
-        :param self: CityGrid object
+        :param self: CityRouting object
         :filename: file name (.html)
         """
         net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=True, notebook=False)
         graph_vis = nx.DiGraph()
 
+        if path: 
+            path_edges = set(zip(path[:-1],path[1:]))
+
         for u,v,data in self.graph.edges(data=True):
             val= data.get('cost',0)
             c_norm = max(0,min(1,val))
-            color = f"rgba({int(255*c_norm)},{int(255*(1-c_norm))},0, 1)"
-            graph_vis.add_node(u,title=str(u))
-            graph_vis.add_node(v,title=str(v))
-            graph_vis.add_edge(u,v, color=color, width=2 + (val*5), title=f"Cost: {val:.2f}")
+            edge_color = f"rgba({int(255*c_norm)},{int(255*(1-c_norm))},0, 1)"
+            node_color_u = "#97c2fc"
+            node_color_v = "#97c2fc"
+            node_size = 10
+            edge_width= 2 + (val*5)
+        
+
+            if path and (u,v) in path_edges:
+                edge_color = "#00FFFF"
+                edge_width = 40
+
+
+            if path and u in path:
+                node_color_u = "#00FFFF"
+                node_size = 15
+            
+            if path and v in path:
+                node_color_v = "#00FFFF"
+                node_size = 15
+            
+            graph_vis.add_node(u,title=str(u),color=node_color_u,size=node_size)
+            graph_vis.add_node(v,title=str(v),color=node_color_v,size=node_size)
+            graph_vis.add_edge(u,v, color=edge_color, width=edge_width, title=f"Cost: {val:.2f}")
         
         net.from_nx(graph_vis)
         net.write_html(filename)
 
-if __name__ == "__main__":
-    A = (50.8116, 4.3805) #ULB
-    B = (50.8164000, 4.382400) #Cimetière d'Ixelles
-    
-    real_graph = load_or_download(A, B,margin=50)
-    
-    city = CityRouting(real_graph)
-    
-    WEATHER = np.random.randint(0,5)
-    WEIGHTS = {"w":0.5, "l":0.1, "s":0.3, "sf":0.2}
-    
-    city.inject_missing_attributes(WEATHER)
-    city.get_cost(WEIGHTS)
-    city.plot_city_grid("real_map.html")
-    print("Map generated, (path: real_map.html)!")
+
