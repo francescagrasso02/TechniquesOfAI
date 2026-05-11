@@ -174,26 +174,40 @@ if __name__ == "__main__":
           f"{'':>7} {'':>8} {'':>8} {mean_ratio:>7.2%} {mean_speedup:>7.2f}x")
 
     # ---------- Plot: A* vs Dijkstra expansions ----------
-    fig, ax = plt.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(7, 6))
     dij_x = [r["dijkstra_expanded"] for r in rows]
     ast_y = [r["astar_expanded"]    for r in rows]
+    labels = [r["pair_name"]        for r in rows]
 
     ax.scatter(dij_x, ast_y, s=80, c="#0066CC", edgecolors="black",
                linewidths=0.8, zorder=3)
-    # Diagonal y = x: points below this line means A* expands fewer nodes
-    lim = max(max(dij_x), max(ast_y)) * 1.05
-    ax.plot([0, lim], [0, lim], "k--", linewidth=1, alpha=0.5,
-            label="y = x (no speedup)", zorder=2)
-    # 50% line for visual reference
-    ax.plot([0, lim], [0, lim / 2], color="gray", linestyle=":",
-            linewidth=1, alpha=0.6, label="y = x/2", zorder=2)
 
-    ax.set_xlim(0, lim)
-    ax.set_ylim(0, lim)
-    ax.set_xlabel("Dijkstra - nodes expanded")
-    ax.set_ylabel("A* - nodes expanded")
-    ax.set_title(f"A* vs Dijkstra on {n} Brussels OD pairs\n"
-                 f"(A* expands {mean_ratio:.0%} of Dijkstra's nodes on average)")
+    # Label each point with a short name
+    short = {
+        "ULB -> Gare du Midi"           : "ULB→Midi",
+        "Grand Place -> Bourse"          : "GPlace→Bourse",
+        "Flagey -> Sainte-Catherine"     : "Flagey→S-Cath",
+        "Madou -> Botanique"             : "Madou→Bot",
+        "Schuman -> Cinquantenaire"      : "Schuman→Cinq",
+        "Louise -> Trone"                : "Louise→Trone",
+        "Tour & Taxis -> Yser"           : "T&T→Yser",
+        "ULB -> Bois de la Cambre"       : "ULB→Bois",
+    }
+    for x, y, lbl in zip(dij_x, ast_y, labels):
+        ax.annotate(short.get(lbl, lbl), (x, y),
+                    textcoords="offset points", xytext=(6, 4),
+                    fontsize=7.5, color="#333333")
+
+    lim = max(max(dij_x), max(ast_y)) * 1.08
+    ax.plot([0, lim], [0, lim],   "k--", lw=1, alpha=0.5, label="y = x (no speedup)")
+    ax.plot([0, lim], [0, lim/2], color="gray", ls=":", lw=1, alpha=0.6, label="y = x/2")
+
+    ax.set_xlim(0, lim); ax.set_ylim(0, lim)
+    ax.set_xlabel("Dijkstra — nodes expanded")
+    ax.set_ylabel("A* — nodes expanded")
+    ax.set_title(f"A* vs Dijkstra on {len(rows)} Brussels OD pairs\n"
+                 f"A* expands {mean_ratio:.0%} of Dijkstra's nodes on average "
+                 f"({mean_speedup:.1f}× faster)")
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(True, alpha=0.3)
     ax.set_aspect("equal")
