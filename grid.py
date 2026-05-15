@@ -40,7 +40,7 @@ class CityRouting():
             data['p_crowd'] = np.random.uniform(0,0.4)
 
             if 'length' not in data : 
-                data['lenght'] = 1
+                data['length'] = 1
 
 
     def get_cost(self,w):
