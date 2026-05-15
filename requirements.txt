@@ -1,0 +1,14 @@
+# requirements.txt — Python dependencies for the Wheelchair Routing project
+# INFO-H410 — Techniques of Artificial Intelligence — ULB
+#
+# Install with:
+#   pip install -r requirements.txt
+
+osmnx>=1.3.0
+networkx>=3.0
+geopy>=2.3.0
+requests>=2.28.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+pyvis>=0.3.2
+seaborn>=0.12.0
