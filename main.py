@@ -6,9 +6,9 @@ import folium
 import pandas as pd
 
 from utils.graph_builder import load_or_download
-from TechniquesOfAI.method_csp.csp import solve as csp_solve, path_metrics as csp_path_metrics
-from TechniquesOfAI.method_astar.astar import astar_manual, path_metrics as astar_path_metrics
-from TechniquesOfAI.method_mdp.mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, compute_path_cost
+from method_csp.csp import solve as csp_solve, path_metrics as csp_path_metrics
+from method_astar.astar import astar_manual, path_metrics as astar_path_metrics
+from method_mdp.mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, compute_path_cost
 from utils.grid import CityRouting, WEIGHTS
 from utils.config import inject_shared_random_attributes
 

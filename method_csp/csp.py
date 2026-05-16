@@ -13,7 +13,7 @@ import copy
 import networkx as nx
 import osmnx as ox
 
-from config import (
+from utils.config import (
     ABSOLUTE_CONSTRAINTS,
     STRICT_CONSTRAINTS,
     RELAXED_CONSTRAINTS,
@@ -21,7 +21,6 @@ from config import (
     CONFIDENCE_LEVELS,
     DEFAULTS,
 )
-
 
 def build_feasible_graph(G, strict=True):
     """
