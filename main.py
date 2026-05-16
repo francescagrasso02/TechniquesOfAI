@@ -25,7 +25,7 @@ import folium
 from graph_builder import load_or_download
 from csp import solve as csp_solve, path_metrics as csp_path_metrics
 from astar import astar_manual, path_metrics as astar_path_metrics
-from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA
+from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA,compute_path_cost
 from grid import CityRouting, WEIGHTS
 
 
@@ -124,7 +124,7 @@ def build_folium_map(G, paths, center):
 def print_table(scenario_name, rows):
     """Prints a comparison table for one scenario."""
     print(f"\n{scenario_name}")
-    header = f"  {'approach':<10} {'found':<8} {'length (m)':<13} {'time (ms)':<12} {'expanded':<11} {'confidence':<12}"
+    header = f"  {'approach':<10} {'found':<8} {'length (m)':<13} {'time (ms)':<12} {'expanded':<11} {'confidence':<12} {'cost':<12} "
     print(header)
     print("  " + "-" * (len(header) - 2))
     for r in rows:
@@ -133,8 +133,8 @@ def print_table(scenario_name, rows):
         time_ms    = f"{r['time_ms']:.1f}"    if r['found'] else "-"
         expanded   = str(r['expanded'])        if r.get('expanded') is not None else "-"
         confidence = f"{r['confidence']:.1f}%" if r.get('confidence') is not None else "-"
-        print(f"  {r['name']:<10} {found:<8} {length:<13} {time_ms:<12} {expanded:<11} {confidence:<12}")
-
+        cost = f"{r['cost']:.1f}" if r.get('cost') is not None else "-"
+        print(f"  {r['name']:<10} {found:<8} {length:<13} {time_ms:<12} {expanded:<11} {confidence:<12} {cost:<12}")
 
 def run_scenario_a():
     """
@@ -169,6 +169,7 @@ def run_scenario_a():
             'time_ms':    csp_time,
             'expanded':   None,
             'confidence': csp_result['confidence'],
+            'cost' : None
         })
         paths['CSP'] = csp_result['path']
     else:
@@ -190,6 +191,7 @@ def run_scenario_a():
             'time_ms':    ast_time,
             'expanded':   ast_result['expanded'],
             'confidence': None,
+            'cost' : None
         })
         paths['A*'] = ast_result['path']
     else:
@@ -211,6 +213,7 @@ def run_scenario_a():
             'time_ms':    mdp_time,
             'expanded':   None,
             'confidence': None,
+            'cost': compute_path_cost(city,mdp_path)
         })
         paths['MDP'] = mdp_path
     else:
@@ -262,6 +265,7 @@ def run_scenario_b():
             'time_ms':    csp_time,
             'expanded':   None,
             'confidence': csp_result['confidence'],
+            'cost' : None
         })
         paths['CSP'] = csp_result['path']
     else:
@@ -283,6 +287,7 @@ def run_scenario_b():
             'time_ms':    ast_time,
             'expanded':   ast_result['expanded'],
             'confidence': None,
+            'cost' : None
         })
         paths['A*'] = ast_result['path']
     else:
@@ -304,6 +309,7 @@ def run_scenario_b():
             'time_ms':    mdp_time,
             'expanded':   None,
             'confidence': None,
+            'cost' : compute_path_cost(city,mdp_path)
         })
         paths['MDP'] = mdp_path
     else:
