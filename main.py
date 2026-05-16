@@ -1,26 +1,8 @@
-# main.py — Wheelchair Routing Brussels — INFO-H410
-#
-# Runs three AI approaches on the same routing problem and compares them.
-#
-# Scenario A — long route, deterministic world (ULB → Gare du Midi)
-#   CSP  : hard constraints, Dijkstra on filtered graph
-#   A*   : soft constraints, heuristic search on full graph
-#   MDP  : skipped (value iteration does not scale to graphs this large)
-#
-# Scenario B — short route, stochastic world (ULB → Cimetière d'Ixelles)
-#   CSP  : same as above but on a smaller graph
-#   A*   : same as above but on a smaller graph
-#   MDP  : value iteration + policy extraction on CityRouting graph
-#
-# Output: two interactive HTML maps (one per scenario) + a comparison table.
-#
-# Usage:
-#   python main.py
-
 import time
 import numpy as np
 import osmnx as ox
 import folium
+import pandas as pd
 
 from graph_builder import load_or_download
 from csp import solve as csp_solve, path_metrics as csp_path_metrics
@@ -29,15 +11,22 @@ from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, 
 from grid import CityRouting, WEIGHTS
 
 
-# Scenario A: long, deterministic
-SCENARIO_A_ORIGIN = (50.8116064, 4.380511)   # ULB
-SCENARIO_A_DEST   = (50.8364862, 4.337896)   # Gare du Midi
-SCENARIO_A_MARGIN = 500
+FINAL_BENCHMARK_PAIRS = [
+    #Short paths
+    ("De Brouckère -> Monnaie",(50.8510, 4.3526), (50.8498, 4.3529)),  #150m 
+    ("Mont des Arts -> Sablon",(50.8438, 4.3565), (50.8400, 4.3550)),  #450m 
+    
+    #Intermediate paths
+    ("Porte de Hal -> Jeu de Balle", (50.8331, 4.3444), (50.8373, 4.3458)),  #500m 
+    ("Georges Henri -> Montgomery", (50.8427, 4.4057), (50.8379, 4.4075)),  #600m 
+    ("Palais Royal -> Pl. Luxembourg",(50.8423, 4.3626), (50.8392, 4.3725)),  #850m 
+    ("VUB -> Delta",(50.8226, 4.3946), (50.8170, 4.4045)),  #1.0km 
 
-# Scenario B: short, stochastic
-SCENARIO_B_ORIGIN = (50.8116064, 4.380511)   # ULB
-SCENARIO_B_DEST   = (50.8164000, 4.382400)   # Cimetière d'Ixelles
-SCENARIO_B_MARGIN = 200
+    #Long paths
+    ("Rogier -> Basilique Koekelberg",(50.8557, 4.3582), (50.8665, 4.3175)),  #3.5km 
+    ("Atomium -> Gare du Nord",(50.8949, 4.3415), (50.8606, 4.3608)),  #4.5km 
+]
+
 
 ROUTE_COLORS = {
     'CSP':  '#0055ff',
@@ -96,7 +85,6 @@ def build_folium_map(G, paths, center):
     folium.LayerControl(collapsed=False).add_to(m)
     return m
 
-
 def print_table(scenario_name, rows):
     """Prints a comparison table for one scenario."""
     print(f"\n{scenario_name}")
@@ -112,27 +100,29 @@ def print_table(scenario_name, rows):
         cost = f"{r['cost']:.1f}" if r.get('cost') is not None else "-"
         print(f"  {r['name']:<10} {found:<8} {length:<13} {time_ms:<12} {expanded:<11} {confidence:<12} {cost:<12}")
 
-def run_scenario_a():
-    """
-    Scenario A: ULB → Gare du Midi, margin=500m.
-    Runs CSP and A*.
-    """
-    print("\nScenario A — ULB → Gare du Midi (deterministic, margin=500m)")
+def run_scenario(scenario,weather,margin,n):
+
+    name = scenario[0]
+
+    print(f"\n{name}")
     print("Loading graph...")
-    G = load_or_download(SCENARIO_A_ORIGIN, SCENARIO_A_DEST, margin=SCENARIO_A_MARGIN)
+
+    origin = scenario[1]
+    destination = scenario[2]
+
+    G = load_or_download(origin, destination, margin)
     print(f"  {len(G.nodes)} nodes, {len(G.edges)} edges")
 
     rows  = []
     paths = {}
 
-    weather = np.random.randint(0, 5)
     city    = CityRouting(G)
     city.inject_missing_attributes(weather)
     city.get_cost(WEIGHTS)
 
     # CSP
     t0         = time.perf_counter()
-    csp_result = csp_solve(G, SCENARIO_A_ORIGIN, SCENARIO_A_DEST)
+    csp_result = csp_solve(G, origin, destination)
     csp_time   = (time.perf_counter() - t0) * 1000
 
     if csp_result['path']:
@@ -151,8 +141,8 @@ def run_scenario_a():
         rows.append({'name': 'CSP', 'found': False})
 
     # A*
-    origin     = nearest_node(G, SCENARIO_A_ORIGIN)
-    goal       = nearest_node(G, SCENARIO_A_DEST)
+    origin     = nearest_node(G, origin)
+    goal       = nearest_node(G, destination)
     t0         = time.perf_counter()
     ast_result = astar_manual(G, origin, goal)
     ast_time   = (time.perf_counter() - t0) * 1000
@@ -174,7 +164,7 @@ def run_scenario_a():
 
     # MDP 
     t0 = time.perf_counter()
-    value_iteration(city, N_ITERATIONS, goal, GAMMA,EPSILON)
+    value_iteration(city, N_ITERATIONS, goal, GAMMA, EPSILON)
     get_policy(city, GAMMA)
     mdp_path = apply_policy(city,origin,goal)
     mdp_time = (time.perf_counter() - t0) * 1000
@@ -194,114 +184,37 @@ def run_scenario_a():
     else:
         rows.append({'name': 'MDP', 'found': False})
 
-    print_table("Scenario B", rows)
+    print_table(f"{name}", rows)
 
     center = (
-        (SCENARIO_B_ORIGIN[0] + SCENARIO_B_DEST[0]) / 2,
-        (SCENARIO_B_ORIGIN[1] + SCENARIO_B_DEST[1]) / 2,
+        (scenario[1][0] + scenario[2][0])/2,
+        (scenario[1][1] + scenario[2][1])/2,
     )
     m = build_folium_map(G, paths, center)
-    m.save("map_scenario_a.html")
-    print("\n  map saved to map_scenario_a.html")
+    m.save(f"maps/map_scenario_{n}.html")
+    print(f"\n  map saved to map_scenario_{n}.html")
 
+    for r in rows:
+        r['scenario'] = name
+    return rows
 
-def run_scenario_b():
-    """
-    Scenario B: ULB → Cimetière d'Ixelles, margin=200m.
-    Runs all three approaches on the same small graph enriched
-    with stochastic attributes (crowd, weather) via CityRouting.
-    """
-    print("\nScenario B — ULB → Cimetière d'Ixelles (stochastic, margin=200m)")
-    print("Loading graph...")
-    G = load_or_download(SCENARIO_B_ORIGIN, SCENARIO_B_DEST, margin=SCENARIO_B_MARGIN)
-    print(f"  {len(G.nodes)} nodes, {len(G.edges)} edges")
-
-    # Enrich the graph with stochastic attributes for MDP and A* cost
-    weather = np.random.randint(0, 5)
-    city    = CityRouting(G)
-    city.inject_missing_attributes(weather)
-    city.get_cost(WEIGHTS)
-    G_enriched = city.graph
-
-    rows  = []
-    paths = {}
-
-    # CSP — runs on the enriched graph (OSM attributes unchanged)
-    t0         = time.perf_counter()
-    csp_result = csp_solve(G_enriched, SCENARIO_B_ORIGIN, SCENARIO_B_DEST)
-    csp_time   = (time.perf_counter() - t0) * 1000
-
-    if csp_result['path']:
-        m = csp_path_metrics(csp_result['path'], G_enriched)
-        rows.append({
-            'name':       'CSP',
-            'found':      True,
-            'length_m':   m['length_m'],
-            'time_ms':    csp_time,
-            'expanded':   None,
-            'confidence': csp_result['confidence'],
-            'cost' : None
-        })
-        paths['CSP'] = csp_result['path']
-    else:
-        rows.append({'name': 'CSP', 'found': False})
-
-    # A*
-    origin     = nearest_node(G_enriched, SCENARIO_B_ORIGIN)
-    goal       = nearest_node(G_enriched, SCENARIO_B_DEST)
-    t0         = time.perf_counter()
-    ast_result = astar_manual(G_enriched, origin, goal)
-    ast_time   = (time.perf_counter() - t0) * 1000
-
-    if ast_result['path']:
-        m = astar_path_metrics(G_enriched, ast_result['path'])
-        rows.append({
-            'name':       'A*',
-            'found':      True,
-            'length_m':   m['length_m'],
-            'time_ms':    ast_time,
-            'expanded':   ast_result['expanded'],
-            'confidence': None,
-            'cost' : None
-        })
-        paths['A*'] = ast_result['path']
-    else:
-        rows.append({'name': 'A*', 'found': False})
-
-    # MDP
-    t0 = time.perf_counter()
-    value_iteration(city, N_ITERATIONS, goal, GAMMA,EPSILON)
-    get_policy(city, GAMMA)
-    mdp_path = apply_policy(city, origin, goal)
-    mdp_time = (time.perf_counter() - t0) * 1000
-
-    if mdp_path:
-        m = astar_path_metrics(G_enriched, mdp_path)
-        rows.append({
-            'name':       'MDP',
-            'found':      True,
-            'length_m':   m['length_m'],
-            'time_ms':    mdp_time,
-            'expanded':   None,
-            'confidence': None,
-            'cost' : compute_path_cost(city,mdp_path)
-        })
-        paths['MDP'] = mdp_path
-    else:
-        rows.append({'name': 'MDP', 'found': False})
-
-    print_table("Scenario B", rows)
-
-    center = (
-        (SCENARIO_B_ORIGIN[0] + SCENARIO_B_DEST[0]) / 2,
-        (SCENARIO_B_ORIGIN[1] + SCENARIO_B_DEST[1]) / 2,
-    )
-    m = build_folium_map(G_enriched, paths, center)
-    m.save("map_scenario_b.html")
-    print("\n  map saved to map_scenario_b.html")
 
 
 if __name__ == '__main__':
-    run_scenario_a()
-    run_scenario_b()
+    
+    all_results = []
+    
+    for n, scenario in enumerate(FINAL_BENCHMARK_PAIRS):
+        scenario_rows = run_scenario(scenario, weather=4, margin=200, n=n)
+        all_results.extend(scenario_rows)  
+
+    df = pd.DataFrame(all_results)
+    
+    cols_order = ['scenario', 'name', 'found', 'length_m', 'time_ms', 'cost', 'confidence', 'expanded']
+    df = df[cols_order]
+    
+    df.to_csv("final_benchmark_results.csv", index=False)
+    
+    print("Bechmark results saved in: 'final_benchmark_results.csv'")
+    print(df.head(10))
 
