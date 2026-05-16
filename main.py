@@ -150,6 +150,11 @@ def run_scenario_a():
     rows  = []
     paths = {}
 
+    weather = np.random.randint(0, 5)
+    city    = CityRouting(G)
+    city.inject_missing_attributes(weather)
+    city.get_cost(WEIGHTS)
+
     # CSP
     t0         = time.perf_counter()
     csp_result = csp_solve(G, SCENARIO_A_ORIGIN, SCENARIO_A_DEST)
@@ -191,20 +196,31 @@ def run_scenario_a():
         rows.append({'name': 'A*', 'found': False})
 
     # MDP 
-    rows.append({
-        'name':       'MDP',
-        'found':      False,
-        'length_m':   None,
-        'time_ms':    None,
-        'expanded':   None,
-        'confidence': None,
-    })
+    t0 = time.perf_counter()
+    value_iteration(city, N_ITERATIONS, goal, GAMMA)
+    get_policy(city, GAMMA)
+    mdp_path = safe_apply_policy(city, origin, goal)
+    mdp_time = (time.perf_counter() - t0) * 1000
 
-    print_table("Scenario A", rows)
+    if mdp_path:
+        m = astar_path_metrics(G, mdp_path)
+        rows.append({
+            'name':       'MDP',
+            'found':      True,
+            'length_m':   m['length_m'],
+            'time_ms':    mdp_time,
+            'expanded':   None,
+            'confidence': None,
+        })
+        paths['MDP'] = mdp_path
+    else:
+        rows.append({'name': 'MDP', 'found': False})
+
+    print_table("Scenario B", rows)
 
     center = (
-        (SCENARIO_A_ORIGIN[0] + SCENARIO_A_DEST[0]) / 2,
-        (SCENARIO_A_ORIGIN[1] + SCENARIO_A_DEST[1]) / 2,
+        (SCENARIO_B_ORIGIN[0] + SCENARIO_B_DEST[0]) / 2,
+        (SCENARIO_B_ORIGIN[1] + SCENARIO_B_DEST[1]) / 2,
     )
     m = build_folium_map(G, paths, center)
     m.save("map_scenario_a.html")
