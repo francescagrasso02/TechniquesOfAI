@@ -6,9 +6,9 @@ import osmnx as ox
 SEED = 42
 
 #Global variables
-STATES = [k for k in range(SIZE**2)]
 N_ITERATIONS = 1000
 GAMMA = 0.99
+EPSILON = 1e-3
 #Transition function settings 
 
 def transition(city:CityRouting,st1,st2,a):
@@ -43,14 +43,13 @@ def reward(city:CityRouting,st1,st2):
 
 def value_iteration(city:CityRouting,n_iterations,target_node,gamma):
 
-    delta = 0
-    epsilon = 1e-3
+    epsilon = EPSILON
     states = list(city.graph.nodes())
     city.v_s = {state:0 for state in states}
     city.v_s_next = {state:0 for state in states}
     for i in range(n_iterations):
+        delta = 0
         for st1 in states : 
-
             if st1 == target_node:
                 city.v_s_next[st1] = 0
                 continue
@@ -64,10 +63,15 @@ def value_iteration(city:CityRouting,n_iterations,target_node,gamma):
 
             for a in successors :
                 v_temp = 0
+                r = reward(city,st1,a)
                 for st2 in [a,st1] :
                     t = transition(city,st1,st2,a)
-                    r = reward(city,st1,st2)
-                    v_temp += t*(r+gamma*city.v_s[st2])
+                    #Penalty when st1==st2
+                    if st1 == a :
+                        current_r = r 
+                    else :
+                        current_r = r-5
+                    v_temp += t*(current_r+gamma*city.v_s[st2])
                 if v_temp > v_max : 
                     v_max = v_temp
             city.v_s_next[st1] = v_max
@@ -86,9 +90,9 @@ def get_policy(city:CityRouting,gamma):
         a_max = None
         for a in city.graph.successors(st1) :
             v_temp = 0
+            r = reward(city,st1,a)
             for st2 in [a,st1] :
                 t = transition(city,st1,st2,a)
-                r = reward(city,st1,st2)
                 v_temp += t*(r+gamma*city.v_s[st2])
             if v_temp > v_max : 
                 v_max = v_temp
@@ -98,10 +102,20 @@ def get_policy(city:CityRouting,gamma):
 def apply_policy(city:CityRouting,start_node,target_node):
     state = start_node
     path = []
+    visited = set()
+
     while (state != target_node):
+        if state is None or state in visited:
+            print(f"Error, the policy leads to a deadlock.")
+            return path
+        
+        visited.add(state)
         path.append(state)
         action = city.policy[state]
         state = action
+
+    if state == target_node:
+        path.append(target_node)
     return path
 
 if __name__ == "__main__":
