@@ -25,7 +25,7 @@ import folium
 from graph_builder import load_or_download
 from csp import solve as csp_solve, path_metrics as csp_path_metrics
 from astar import astar_manual, path_metrics as astar_path_metrics
-from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA,compute_path_cost
+from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, EPSILON,compute_path_cost
 from grid import CityRouting, WEIGHTS
 
 
@@ -57,30 +57,6 @@ def nearest_node(G, point):
 def path_to_latlon(G, path):
     """Converts a list of node ids to a list of (lat, lon) tuples for Folium."""
     return [(G.nodes[n]['y'], G.nodes[n]['x']) for n in path]
-
-
-def safe_apply_policy(city, start_node, target_node, max_steps=1000):
-    """
-    Follows the MDP policy from start_node to target_node.
-    Returns the path as a list of node ids, or None if the policy
-    leads to a cycle or a dead end before reaching the target.
-    """
-    state  = start_node
-    path   = []
-    visited = set()
-
-    while state != target_node:
-        if state in visited or len(path) >= max_steps:
-            return None
-        visited.add(state)
-        path.append(state)
-        action = city.policy.get(state)
-        if action is None:
-            return None
-        state = action
-
-    path.append(target_node)
-    return path
 
 
 def build_folium_map(G, paths, center):
@@ -139,8 +115,7 @@ def print_table(scenario_name, rows):
 def run_scenario_a():
     """
     Scenario A: ULB → Gare du Midi, margin=500m.
-    Runs CSP and A*. MDP is skipped — value iteration does not scale
-    to graphs of this size (several thousand nodes).
+    Runs CSP and A*.
     """
     print("\nScenario A — ULB → Gare du Midi (deterministic, margin=500m)")
     print("Loading graph...")
@@ -199,9 +174,9 @@ def run_scenario_a():
 
     # MDP 
     t0 = time.perf_counter()
-    value_iteration(city, N_ITERATIONS, goal, GAMMA)
+    value_iteration(city, N_ITERATIONS, goal, GAMMA,EPSILON)
     get_policy(city, GAMMA)
-    mdp_path = safe_apply_policy(city, origin, goal)
+    mdp_path = apply_policy(city,origin,goal)
     mdp_time = (time.perf_counter() - t0) * 1000
 
     if mdp_path:
@@ -295,9 +270,9 @@ def run_scenario_b():
 
     # MDP
     t0 = time.perf_counter()
-    value_iteration(city, N_ITERATIONS, goal, GAMMA)
+    value_iteration(city, N_ITERATIONS, goal, GAMMA,EPSILON)
     get_policy(city, GAMMA)
-    mdp_path = safe_apply_policy(city, origin, goal)
+    mdp_path = apply_policy(city, origin, goal)
     mdp_time = (time.perf_counter() - t0) * 1000
 
     if mdp_path:
