@@ -67,7 +67,7 @@ class CityRouting():
         cost = (w["w"]*s[:,0] + w["l"]*s[:,1] + w["s"]*s[:,2]*s[:,4] + w["sf"]*s[:,3]*s[:,4])
         
         for i,(u,v,k,data) in enumerate(edges_list):
-            data['cost'] = cost[i]
+            data['cost'] = max(1e-4, cost[i]) #to avoid having a 0 cost before reaching the target state
     
     def plot_city_grid(self, filename="map.html",path=None):
         """
