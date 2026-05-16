@@ -307,3 +307,4 @@ def run_scenario_b():
 if __name__ == '__main__':
     run_scenario_a()
     run_scenario_b()
+
