@@ -1,9 +1,0 @@
-pair_name,graph_nodes,graph_edges,path_length_m,path_cost,path_edges,max_slope_pct,astar_expanded,dijkstra_expanded,expansion_ratio,astar_time_ms,dijkstra_time_ms,speedup_time
-ULB -> Gare du Midi,24680,70992,4504.1,5211.09,101,0.0,3987,18161,0.2195,57.6,220.3,3.82
-Grand Place -> Bourse,7243,20754,306.0,375.97,10,0.0,28,269,0.1041,0.7,3.8,5.4
-Flagey -> Sainte-Catherine,21691,62438,3592.5,4166.49,82,0.0,4205,16802,0.2503,63.1,191.0,3.03
-Madou -> Botanique,7308,20732,607.5,761.49,22,0.0,267,715,0.3734,4.1,9.1,2.21
-Schuman -> Cinquantenaire,7859,22366,958.1,1133.13,25,0.0,194,1609,0.1206,3.4,29.8,8.87
-Louise -> Trone,10088,28890,1587.5,1804.49,31,0.0,320,3013,0.1062,33.9,45.6,1.34
-Tour & Taxis -> Yser,10618,30676,2051.4,2422.45,53,0.0,1411,5465,0.2582,26.2,91.1,3.48
-ULB -> Bois de la Cambre,4627,13236,933.6,1024.6,13,0.0,47,602,0.0781,1.2,8.4,6.97
