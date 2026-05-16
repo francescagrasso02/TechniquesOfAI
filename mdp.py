@@ -118,6 +118,19 @@ def apply_policy(city:CityRouting,start_node,target_node):
         path.append(target_node)
     return path
 
+def compute_path_cost(city,path):
+    if path and len(path) > 1:
+        edge_costs = []
+        
+        for i in range(len(path) - 1):
+            u = path[i]      
+            v = path[i+1]    
+            
+            cost = city.graph[u][v][0].get('cost',0)
+            edge_costs.append(cost)
+                        
+        return sum(edge_costs)
+
 if __name__ == "__main__":
     A = (50.8116, 4.3805) #ULB
     B = (50.8164000, 4.382400) #Cimetière d'Ixelles
