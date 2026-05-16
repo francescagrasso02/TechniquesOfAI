@@ -151,13 +151,14 @@ def compute_confidence(path, G):
     return score, _confidence_label(score)
 
 
-def solve(G, point_A, point_B):
+def solve(G, point_A, point_B, mode='auto'):
     """
     Main entry point for the CSP routing.
 
-    Attempts to find a path in this order:
-      1. Filtered graph with strict constraints
-      2. Filtered graph with relaxed constraints
+    mode:
+      'auto'         — try strict, then relaxed (original behaviour)
+      'strict_only'  — try strict only; return no_path if it fails
+      'relaxed_only' — try relaxed only; return no_path if it fails
 
     Returns a dict with all relevant information for display and evaluation.
     Keys:
@@ -171,8 +172,17 @@ def solve(G, point_A, point_B):
     """
     t_start = time.perf_counter()
 
-    for strict in [True, False]:
-        mode = 'strict' if strict else 'relaxed'
+    if mode == 'strict_only':
+        strict_levels = [True]
+    elif mode == 'relaxed_only':
+        strict_levels = [False]
+    else:
+        strict_levels = [True, False]
+
+    csp_stats = None
+
+    for strict in strict_levels:
+        level = 'strict' if strict else 'relaxed'
 
         H, csp_stats = build_feasible_graph(G, strict=strict)
         result       = find_path(H, point_A, point_B)
@@ -186,7 +196,7 @@ def solve(G, point_A, point_B):
                 'goal':       result['goal'],
                 'confidence': confidence,
                 'label':      label,
-                'mode':       mode,
+                'mode':       level,
                 'csp_stats':  csp_stats,
                 'runtime_s':  round(time.perf_counter() - t_start, 4),
             }
