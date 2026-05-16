@@ -5,11 +5,12 @@ import osmnx as ox
 import folium
 import pandas as pd
 
-from graph_builder import load_or_download
-from csp import solve as csp_solve, path_metrics as csp_path_metrics
-from astar import astar_manual, path_metrics as astar_path_metrics
-from mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, EPSILON, compute_path_cost
-from grid import CityRouting, WEIGHTS
+from utils.graph_builder import load_or_download
+from TechniquesOfAI.method_csp.csp import solve as csp_solve, path_metrics as csp_path_metrics
+from TechniquesOfAI.method_astar.astar import astar_manual, path_metrics as astar_path_metrics
+from TechniquesOfAI.method_mdp.mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, compute_path_cost
+from utils.grid import CityRouting, WEIGHTS
+from utils.config import inject_shared_random_attributes
 
 
 FINAL_BENCHMARK_PAIRS = [
@@ -149,14 +150,14 @@ def run_scenario(scenario, weather, margin, n):
     print("Loading graph...")
 
     G = load_or_download(origin, destination, margin)
+    G = inject_shared_random_attributes(G)
     print(f"  {len(G.nodes)} nodes, {len(G.edges)} edges")
 
     rows  = []
     paths = {}
 
     city = CityRouting(G)
-    city.inject_missing_attributes(weather)
-    city.get_cost(WEIGHTS)
+    city.get_cost(WEIGHTS,weather)
 
     origin_node = nearest_node(G, origin)
     goal_node   = nearest_node(G, destination)
@@ -266,7 +267,7 @@ def run_scenario(scenario, weather, margin, n):
     # Use G_csp because if CSP escalated to a larger area, it contains all
     # nodes of the default G, so other path nodes are still lookupable.
     folium_map = build_folium_map(G_csp, paths, center)
-    folium_map.save(f"maps/map_scenario_{n}.html")
+    folium_map.save(f"maps_sunny/map_scenario_{n}.html")
     print(f"\n  map saved to map_scenario_{n}.html")
 
     for r in rows:
@@ -276,16 +277,16 @@ def run_scenario(scenario, weather, margin, n):
 
 if __name__ == '__main__':
     all_results = []
-
+    weather = 3
+    print("weather",weather)
     for n, scenario in enumerate(FINAL_BENCHMARK_PAIRS):
-        scenario_rows = run_scenario(scenario, weather=4, margin=200, n=n)
+        scenario_rows = run_scenario(scenario, weather=weather, margin=200, n=n)
         all_results.extend(scenario_rows)
 
     df = pd.DataFrame(all_results)
     cols_order = ['scenario', 'name', 'found', 'length_m', 'time_ms', 'cost', 'confidence', 'expanded']
     df = df[cols_order]
 
-    df.to_csv("final_benchmark_results.csv", index=False)
-
-    print("Benchmark results saved in: 'final_benchmark_results.csv'")
+    df.to_csv("final_benchmark_results_sunny.csv", index=False)
+    print("Benchmark results saved in: 'final_benchmark_results_sunny.csv'")
     print(df.head(10))

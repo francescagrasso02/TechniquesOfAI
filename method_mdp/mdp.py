@@ -1,6 +1,6 @@
 import numpy as np 
-from grid import SIZE,WEIGHTS,CityRouting
-from graph_builder import load_or_download
+from utils.grid import WEIGHTS,CityRouting
+from utils.graph_builder import load_or_download
 import osmnx as ox
 
 SEED = 42

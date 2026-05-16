@@ -1,0 +1,33 @@
+scenario,name,found,length_m,time_ms,cost,confidence,expanded
+De Brouckère -> Monnaie,Baseline,True,228.6158571139753,0.8995420066639781,,,
+De Brouckère -> Monnaie,CSP,True,228.6,123.39879100909457,,85.0,
+De Brouckère -> Monnaie,A*,True,342.5,0.10304202442057431,,,16.0
+De Brouckère -> Monnaie,MDP,True,282.6,5722.755916998722,4.651067514382974,,
+Mont des Arts -> Sablon,Baseline,True,630.9136002707078,2.8039999888278544,,,
+Mont des Arts -> Sablon,CSP,True,1430.8,197.90962498518638,,85.0,
+Mont des Arts -> Sablon,A*,True,924.9,0.21399999968707561,,,51.0
+Mont des Arts -> Sablon,MDP,True,692.2,8157.087291998323,11.707943348239048,,
+Porte de Hal -> Jeu de Balle,Baseline,True,597.0348135958801,2.1197090100031346,,,
+Porte de Hal -> Jeu de Balle,CSP,True,671.5,197.75437499629334,,85.0,
+Porte de Hal -> Jeu de Balle,A*,True,699.3,0.14908300363458693,,,29.0
+Porte de Hal -> Jeu de Balle,MDP,True,640.0,7552.206499996828,7.553823547625754,,
+Georges Henri -> Montgomery,Baseline,True,574.7798955538468,1.0425829968880862,,,
+Georges Henri -> Montgomery,CSP,True,1408.6,35.4800829954911,,85.0,
+Georges Henri -> Montgomery,A*,True,675.3,0.14854202163405716,,,32.0
+Georges Henri -> Montgomery,MDP,True,671.5,4926.032917021075,11.659241729023922,,
+Palais Royal -> Pl. Luxembourg,Baseline,True,940.7506344685793,4.714959010016173,,,
+Palais Royal -> Pl. Luxembourg,CSP,False,,,,,
+Palais Royal -> Pl. Luxembourg,A*,True,1441.9,0.2777079935185611,,,53.0
+Palais Royal -> Pl. Luxembourg,MDP,True,1454.6,11104.581125022378,15.741861483350792,,
+VUB -> Delta,Baseline,True,1266.4706866299618,4.123207996599376,,,
+VUB -> Delta,CSP,True,1543.3,133.5252079879865,,4.1,
+VUB -> Delta,A*,True,3872.6,27.579000015975907,,,9776.0
+VUB -> Delta,MDP,True,3610.1,8926.873166987207,29.333481596309067,,
+Rogier -> Basilique Koekelberg,Baseline,True,3407.123331590336,33.09929100214504,,,
+Rogier -> Basilique Koekelberg,CSP,True,3644.1,752.1995419810992,,4.2,
+Rogier -> Basilique Koekelberg,A*,True,4843.0,0.7522910018451512,,,145.0
+Rogier -> Basilique Koekelberg,MDP,True,4641.8,46063.6231249955,38.67166307602237,,
+Atomium -> Gare du Nord,Baseline,True,4670.40677473657,41.71745799249038,,,
+Atomium -> Gare du Nord,CSP,True,6152.9,983.1405840232037,,3.5,
+Atomium -> Gare du Nord,A*,True,6744.8,1.023332995828241,,,241.0
+Atomium -> Gare du Nord,MDP,True,5687.4,58514.778374985326,36.71896676961227,,
