@@ -1,0 +1,244 @@
+%File: Wheelchair_accesible_urban_navigation.tex
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage{aaai2026}  % DO NOT CHANGE THIS
+\usepackage{times}  % DO NOT CHANGE THIS
+\usepackage{helvet}  % DO NOT CHANGE THIS
+\usepackage{courier}  % DO NOT CHANGE THIS
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+\setlength{\pdfpagewidth}{8.5in} % DO NOT CHANGE THIS
+\setlength{\pdfpageheight}{11in} % DO NOT CHANGE THIS
+
+% Recommended packages for algorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+% Recommended packages for listings (code blocks)
+\usepackage{newfloat}
+\usepackage{listings}
+\DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off}
+\lstset{%
+	basicstyle={\footnotesize\ttfamily},
+	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,
+	aboveskip=0pt,belowskip=0pt,
+	showstringspaces=false,tabsize=2,breaklines=true}
+\floatstyle{ruled}
+\newfloat{listing}{tb}{lst}{}
+\floatname{listing}{Listing}
+
+\pdfinfo{
+/TemplateVersion (2026.1)
+}
+
+
+
+\nocopyright
+
+\setcounter{secnumdepth}{0}
+
+\usepackage{amsmath}
+
+
+% TITLE AND AUTHORS
+
+\title{AI Techniques for Wheelchair-Accessible Urban Navigation}
+
+\author{
+    Fatima Surname\equalcontrib,
+    Francesca Surname\equalcontrib,
+    Lara Surname\equalcontrib,
+    Matteo Surname\equalcontrib
+}
+\affiliations{
+    Université libre de Bruxelles (ULB)\\
+    INFO-H410 --- Techniques of Artificial Intelligence
+}
+
+% BEGIN DOCUMENT
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\begin{links}
+    \link{Code}{https://github.com/francescagrasso02/TechniquesOfAI}
+\end{links}
+
+\section{Introduction}
+
+Currently, route planning applications are mainly based on static criteria such as minimum distance or minimum estimated walking time. However, for wheelchair users, these parameters are not sufficient to be able to find a route that they can take independently. Factors such as narrow sidewalks, steep ramps or inaccessible kerbs may make the route impossible for people with mobility impairments \cite{darko2022}. Recent studies on urban mobility in Brussels highlight problems related to inaccessible kerbs, discontinuities in the tactile pavement and obstacles present on sidewalks \cite{dobruszkes2025}.
+
+\section{Problem Formulation}
+\label{sec:problem}
+
+This work proposes a route planning system that focuses on accessibility for wheelchair users in the city of Brussels. Using real OpenStreetMap data, this system models the urban pedestrian network as a graph, taking into account crucial accessibility factors such as slope, sidewalk width, surface type and kerb accessibility \cite{kaselouris2025}.
+
+Three distinct artificial intelligence approaches are implemented to solve this problem: heuristic search algorithms, such as Dijkstra and A*, Constraint Satisfaction Problems (CSP) and Markov Decision Processes (MDP). These three approaches, which address the same problem from different perspectives, will be compared experimentally and qualitatively to analyze their strengths, and limitations.
+
+\subsection{Formal Representation}
+
+The pedestrian network is modeled as a weighted graph:
+\[
+G = (V,E)
+\]
+
+where:
+\begin{itemize}
+
+    \item \(V\) represents navigable pedestrian nodes extracted from OpenStreetMap
+    
+    \item \(E\) represents sidewalk or street segments connecting adjacent nodes
+    
+\end{itemize}
+
+Each edge \(e \in E\) contains accessibility-related attributes:
+\[
+e = (\text{length}, \text{slope}, \text{width}, \text{kerb}, \text{wheelchair}, \text{surface})
+\]
+
+including:
+\begin{itemize}
+    \item \textbf{length}: street length in metres
+    \item \textbf{slope}: gradient percentage
+    \item \textbf{width}: sidewalk width in metres
+    \item \textbf{kerb}: kerb accessibility type
+    \item \textbf{wheelchair}: wheelchair accessibility tag (\textit{yes, no, limited, unknown})
+    \item \textbf{surface}: surface type
+\end{itemize}
+
+The objective is to compute an accessible path:
+
+\[
+P = (v_1,v_2,\dots,v_n)
+\]
+
+between an origin node \(v_1\) and a destination node \(v_n\), while minimizing traversal cost, which is primarily based on path length:
+
+\[
+\min \sum_{e \in P} c(e)
+\]
+
+The routing process is subject to several accessibility constraints related to pedestrian mobility, including sidewalk slope, minimum width requirements, kerb accessibility, and wheelchair accessibility tags. The system applies strict constraints by default, but switches to relaxed constraints when no feasible accessible route can be found.
+
+\subsection{Suitability for Multiple AI Techniques}
+This problem allows the application of search algorithms such as Dijkstra and A*, since the pedestrian network can be represented as a weighted graph for finding minimum-cost accessible routes. Constraint Satisfaction Problems can also be applied to ensure that the route satisfies specific accessibility constraints. Finally, Markov Decision Processes can be used to model uncertainty in accessibility conditions due to the presence of incomplete accessibility information in OpenStreetMap data.
+
+
+\section{Methodological Approaches}
+
+\subsection{Approach A: Search Algorithms}
+We model wheelchair routing as a single-source single-destination
+shortest path problem on the graph $G = (V, E)$
+defined in the Problem Formulation section, and solve it using A* heuristic search.
+A* selects nodes for expansion by ordering them on
+$f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from
+the origin to $n$ — the same quantity computed by Dijkstra —
+and $h(n)$ is an admissible heuristic estimate of the remaining
+cost to the destination.
+Setting $h \equiv 0$ reduces A* to Uniform Cost Search
+(equivalent to Dijkstra), used as our experimental baseline.
+
+\paragraph{Accessibility cost function.}
+Rather than minimising physical length alone, we define an
+additive cost per edge that penalises accessibility barriers:
+%
+\begin{equation}
+  C(u,v) = \ell + P_s + P_w + P_{sf} + P_k + P_{wc},
+  \label{eq:astar-cost}
+\end{equation}
+%
+where $\ell$ is the physical length and each $P_i$ is a
+non-negative penalty in equivalent metres.
+Slope is penalised progressively above 5\% and receives an
+extra flat penalty above 8\%; width is penalised below 1.5\,m
+with a further penalty below 1.2\,m; surface type, kerb
+condition, and wheelchair tags each contribute fixed penalties
+based on lookup tables (see supplementary code).
+Edges tagged \texttt{wheelchair=no} receive a prohibitively
+large penalty ($9{,}999$\,m) rather than being removed,
+so A* remains \emph{complete}: a route is always returned,
+even when no fully accessible path exists.
+This soft-constraint design is in
+contrast with the CSP approach described below, which prunes edges
+outright, and from the graph used for Dijkstra.
+
+\paragraph{Heuristic and admissibility.}
+We use the haversine great-circle distance in metres as $h(n)$.
+It is admissible because:
+%
+\begin{equation}
+  h(n)
+  \;\leq\; \ell^*(n \!\to\! d)
+  \;\leq\; C^*(n \!\to\! d) = h^*(n),
+  \label{eq:admissibility}
+\end{equation}
+%
+where the first inequality holds because the geodesic
+is never longer than any road path (a relaxation in which
+all roads are straight), and the second because
+$C \geq \ell$ by construction (all penalties are $\geq 0$).
+Admissibility guarantees that A* returns an optimal solution
+with respect to $C$~\cite{lecturenotes}.
+Furthermore, since $h(n) \geq 0 = h_{\text{Dijkstra}}(n)$
+for all non-goal nodes, haversine \emph{dominates} the
+trivial heuristic: A* expands a strict subset of the
+nodes that Dijkstra explores.
+
+\paragraph{Implementation.}
+We provide two implementations: a reference version using
+\texttt{networkx.astar\_path} and a hand-rolled version using
+Python's \texttt{heapq}, which enables counting nodes expanded
+— a metric not exposed by the library.
+The hand-rolled version uses \emph{lazy deletion} to handle
+priority updates without a decrease-key operation, and a
+counter tiebreaker for deterministic ordering.
+A subtle issue arose with the NetworkX variant: on
+\texttt{MultiDiGraph} objects (the OSMnx default), NetworkX
+passes the full parallel-edge dictionary to the weight
+callback rather than a single edge dict, silently inflating
+costs by $\sim$20\%. We resolved this with a multigraph-aware
+wrapper that selects the cheapest parallel edge — the same
+convention used internally by our hand-rolled version.
+
+
+\subsection{Approach B: Constraint Satisfaction Problems}
+
+\subsection{Approach C: Markov Decision Processes}
+
+\section{Experimental Evaluation}
+
+\paragraph{A* assumptions and limitations.}
+A* assumes a \emph{static, fully known} environment: edge costs are
+fixed at query time. This assumption is shared with the CSP approach
+but not with the MDP, which models
+stochastic disruptions.
+A* is preferable when network conditions are stable and a
+sub-100\,ms response is required; its soft-constraint design
+also makes it the only approach guaranteed to return a route
+in all cases, at the cost of forgoing hard accessibility
+guarantees.
+A natural hybrid would run the CSP first to prune the graph
+to physically accessible edges, then apply A* on that subgraph
+— combining hard constraints with optimality and speed.
+
+\section{Qualitative Comparison}
+
+
+\section{Conclusion}
+
+\bibliography{references}
+
+\end{document}

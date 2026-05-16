@@ -190,7 +190,7 @@ def run_scenario_a():
     else:
         rows.append({'name': 'A*', 'found': False})
 
-    # MDP — not applicable at this scale
+    # MDP 
     rows.append({
         'name':       'MDP',
         'found':      False,
