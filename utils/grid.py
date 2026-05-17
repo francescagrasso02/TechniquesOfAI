@@ -4,7 +4,7 @@ import seaborn as sns
 import copy
 from pyvis.network import Network
 import networkx as nx 
-from graph_builder import load_or_download
+from utils.graph_builder import load_or_download
 
 SIZE = 5
 
