@@ -9,7 +9,7 @@ import osmnx as ox
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 
-from config import DATA_DIR, DEFAULT_MARGIN, DEFAULTS
+from utils.config import DATA_DIR, DEFAULT_MARGIN, DEFAULTS
 
 
 _geolocator = Nominatim(user_agent="wheelchair_routing_ulb", timeout=10)
