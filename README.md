@@ -1,166 +1,290 @@
-# Wheelchair Routing — Team Guide
+# Wheelchair-Accessible Routing in Brussels — INFO-H410
 
-Written by: Matteo
-INFO-H410 — ULB 2024/2025
+Route planning for wheelchair users in Brussels, comparing three AI techniques
+against an unconstrained shortest-path baseline on real OpenStreetMap data.
 
----
-
-## What we built
-
-We wrote the shared part of the project: everything related to the map.
-Our code downloads the Brussels map, enriches it with accessibility data,
-and makes it available for each member's CSP implementation.
-
-The two files we are responsible for are: config.py and graph_builder.py.
+Université Libre de Bruxelles — 2024/2025  
+[Code](https://github.com/francescagrasso02/TechniquesOfAI)
 
 ---
 
-## How the map logic works
+## What it does
 
-### We do not download all of Brussels
+Given an origin and a destination in Brussels, the system finds the most
+wheelchair-accessible walking route between them. Four approaches are compared
+on the same street graph:
 
-When the user says "I want to go from ULB to Gare du Midi", there is no point
-in downloading the entire city map. Instead, we identify the minimum area
-needed between the two points — a rectangle that contains both of them with
-a 500-metre margin on all sides — and download only that.
+- **Baseline** — unconstrained Dijkstra on physical length. No accessibility
+  filtering. Represents what a non-disabled pedestrian would take and serves as
+  a lower bound on path length.
+- **CSP** — hard constraint filtering: inaccessible edges are removed before
+  running Dijkstra on the residual graph. Falls back through a four-step
+  escalation if no path is found.
+- **A\*** — haversine heuristic search with soft penalty costs. Accessibility
+  violations increase edge cost rather than removing the edge, so a path is
+  always returned.
+- **MDP** — value iteration over the full graph computes a global accessibility
+  policy, accounting for stochastic crowds and weather conditions.
 
-The 500-metre margin matters: it is what allows the CSP to find alternative
-routes when the direct path is blocked by an inaccessible street.
+---
 
-### The map is cached
+## Repository structure
 
-The first time a pair of locations is searched, the program downloads the map
-from OpenStreetMap and saves it as a file in the data/ folder. The next time
-anyone searches the same route, the file is loaded directly without touching
-the internet — in under a second.
+```
+.
+├── main.py                       # entry point: runs all benchmark scenarios
+├── utils/
+│   ├── config.py                 # global parameters, constraints, inject_shared_random_attributes
+│   ├── graph_builder.py          # OSM download, elevation enrichment, cache
+│   └── grid.py                   # CityRouting class and edge cost computation for MDP
+├── method_csp/
+│   └── csp.py                    # build_feasible_graph, find_path, confidence_score, solve
+├── method_astar/
+│   ├── astar.py                  # A* and Dijkstra, accessibility cost function
+│   └── benchmark.py              # standalone A* vs Dijkstra benchmark
+├── method_mdp/
+│   └── mdp.py                    # value_iteration, get_policy, apply_policy, grid search
+├── data/                         # cached graph pickle files (created on first run)
+├── maps/                         # HTML interactive maps, one per scenario
+├── final_benchmark_results.csv   # output of main.py
+└── benchmark_results.csv         # output of method_astar/benchmark.py
+```
 
-Each pair of locations has its own cache file. Searching a new pair creates a
-new file without overwriting the existing ones.
+---
 
-### Every street is enriched with accessibility data
+## Installation
 
-After the download, the system adds the following attributes to every street:
+Python 3.10 or later is required.
 
-- slope: gradient in %, calculated from the elevation difference between the
-  two endpoints of the street
-- width: width in metres, taken from OSM tags
-- kerb: kerb type (lowered, flush, raised...)
-- wheelchair: official accessibility tag (yes / no / limited / unknown)
-- surface: surface type (asphalt, cobblestone, gravel...)
+```bash
+pip install osmnx networkx geopy folium numpy pandas
+```
 
-When a value is missing — which is common in OSM — a default value defined
-in config.py is used. The defaults are conservative: we always assume the
-worst case so as not to mislead the user.
+osmnx handles most geospatial dependencies. Elevation data is fetched from
+SRTM at runtime and cached automatically by osmnx.
 
-### If no path is found, the search area is expanded
+---
 
-When the CSP cannot find any accessible path within the initial area,
-the solution is to expand the search radius. You can call load_or_download()
-with a larger margin (e.g. 1000m, 1500m) and the system downloads a wider
-area. Each different margin generates a separate cache file.
+## Reproducing the results
+
+### Main benchmark (all four methods, 8 scenarios)
+
+```bash
+python main.py
+```
+
+Runs all scenarios defined in `FINAL_BENCHMARK_PAIRS`, writes one HTML map per
+scenario to `maps/`, and saves a summary to `final_benchmark_results.csv`.
+
+The random seed is fixed at 42 inside `inject_shared_random_attributes`.
+Any machine with the same dependencies produces identical results.
+
+Expected output per scenario:
+
+```
+Rogier -> Basilique Koekelberg
+Loading graph...
+  11575 nodes, 33566 edges
+  CSP attempts: strict/default(no), strict/larger(no), relaxed/default(ok)
+Value iteration converged!
+
+  approach   found    length (m)    time (ms)    expanded    confidence   cost
+  -------------------------------------------------------------------------------
+  Baseline   yes      3407          31.7         -           -            -
+  CSP        yes      3600          2599.6       -           85.0%        -
+  A*         yes      3810          26.5         4303        -            -
+  MDP        yes      4148          9453.2       -           -            30046.5
+
+  map saved to maps/map_scenario_6.html
+```
+
+### A\* vs Dijkstra benchmark
+
+```bash
+python method_astar/benchmark.py
+```
+
+Runs A\* and Dijkstra on 8 OD pairs and saves `benchmark_results.csv` and
+`benchmark_expansions.png`. On average, A\* expands 19% of the nodes Dijkstra
+explores (4.4× faster) while finding the same optimal path.
+
+### MDP hyperparameter grid search
+
+```bash
+python method_mdp/mdp.py
+```
+
+Runs a grid search over 4 crowd penalties × 3 convergence thresholds.
+Prints a summary table and saves `mdp_tradeoff_time_cost.png`. The
+configuration used in the main benchmark: penalty = −1, ε = 0.1.
+
+---
+
+## How the graph is built
+
+### Bounding box download
+
+Only the minimum area between origin and destination is downloaded from
+OpenStreetMap, extended by a configurable margin (default 200 m in the
+benchmark). This avoids loading all of Brussels and reduces bandwidth and
+energy consumption.
+
+### Edge enrichment
+
+After download, every edge receives five accessibility attributes:
+
+| Attribute | Source | Default when missing |
+|-----------|--------|----------------------|
+| slope (%) | Computed from SRTM node elevations | 0.0 |
+| width (m) | OSM tag | 1.5 |
+| kerb | OSM tag | unknown |
+| wheelchair | OSM tag | unknown |
+| surface | OSM tag | unknown |
+
+Defaults are conservative: the system never assumes accessibility where
+data is missing.
+
+### Shared random attributes
+
+OSM accessibility tags cover fewer than 15% of Brussels edges. To enable a
+meaningful benchmark where constraints actually bind, `inject_shared_random_
+attributes(G, seed=42)` fills missing attributes with reproducible random
+values before any method runs. All four methods receive the same graph,
+guaranteeing a fair comparison.
+
+### Cache
+
+After the first download for a given area, the enriched graph is saved to
+`data/` as a pickle file. Subsequent runs load from cache in under a second
+without touching the network.
 
 ---
 
 ## Accessibility constraints
 
-The constraints are defined in config.py and split into three levels.
+Defined in `utils/config.py`.
 
-### Absolute constraints (always active)
+**Absolute — never relaxed:**
 
-These are never relaxed, no matter what:
+| Tag | Condition | Effect |
+|-----|-----------|--------|
+| `wheelchair` | `= no` | Edge removed |
 
-- kerb = "unknown": the street is removed. If we do not know whether there
-  is a dropped kerb, we cannot guarantee accessibility.
-- wheelchair = "no": the street is removed. It is explicitly forbidden.
+**Strict — default mode:**
 
-### Strict constraints (normal mode)
+| Attribute | Threshold |
+|-----------|-----------|
+| slope | ≤ 8 % |
+| width | ≥ 1.2 m |
 
-- Maximum slope: 8%
-- Minimum width: 1.2 metres
+**Relaxed — fallback:**
 
-### Relaxed constraints (fallback mode)
-
-If no path is found with strict constraints, the system retries with:
-
-- Maximum slope: 15%
-- Minimum width: 1.0 metre
-
-The full fallback sequence is:
-
-  Attempt 1: normal area + strict constraints
-  Attempt 2: normal area + relaxed constraints
-  Attempt 3: expanded area + strict constraints
-  Attempt 4: expanded area + relaxed constraints
-  Attempt 5: ask the user whether to expand further
+| Attribute | Threshold |
+|-----------|-----------|
+| slope | ≤ 15 % |
+| width | ≥ 1.0 m |
 
 ---
 
-## How to use our code
+## CSP escalation (4 steps)
 
-### Basic case — getting the graph
+When the initial attempt fails, the CSP escalates along two axes —
+constraint severity and search area — in this order:
 
-```python
-from graph_builder import geocode, load_or_download
+1. Strict constraints, default bounding box
+2. Strict constraints, larger bounding box (margin × 3)
+3. Relaxed constraints, default bounding box
+4. Relaxed constraints, larger bounding box
 
-point_A = geocode("ULB")
-point_B = geocode("Gare du Midi")
-G = load_or_download(point_A, point_B, margin=500)
-```
-
-The graph G you receive is already enriched with all accessibility attributes
-and ready to be used by your CSP.
-
-### If you need to expand the search area
-
-```python
-G = load_or_download(point_A, point_B, margin=1000)
-```
-
-### What the graph G contains
-
-For every edge (u, v, data) in the graph, data contains:
-
-  data['length']      street length in metres
-  data['slope']       gradient in %
-  data['width']       width in metres
-  data['kerb']        kerb type
-  data['wheelchair']  yes / no / limited / unknown
-  data['surface']     surface type
-
-### How to read the constraints from config.py
-
-```python
-from config import STRICT_CONSTRAINTS, RELAXED_CONSTRAINTS, ABSOLUTE_CONSTRAINTS
-
-# Strict constraints
-slope_max = STRICT_CONSTRAINTS['slope']   # 8.0
-width_min = STRICT_CONSTRAINTS['width']   # 1.2
-
-# Relaxed constraints
-slope_max = RELAXED_CONSTRAINTS['slope']  # 15.0
-width_min = RELAXED_CONSTRAINTS['width']  # 1.0
-```
-
-Do not hardcode constraint values in your code — always import them from
-config.py. That way, if we change a value, it updates for everyone.
+The ordering puts safety first: the system searches a wider area before
+loosening accessibility requirements. If all four steps fail, the system
+reports no accessible route rather than returning an unsafe path.
 
 ---
 
-## The files
+## A\* cost function
 
-**config.py** — all parameters: constraints, defaults, confidence score
-weights, visualisation colours. If you want to change a constraint value,
-change it here.
+Edges are never removed. Accessibility violations add equivalent-metre penalties:
 
-**graph_builder.py** — the full pipeline. You should never need to modify
-this file. Just call load_or_download().
+| Condition | Penalty |
+|-----------|---------|
+| slope > 5 % | (slope − 5) × 10 m, progressive |
+| slope > 8 % | additional flat +20 m |
+| width < 1.5 m | +8 m |
+| width < 1.2 m | additional +12 m |
+| cobblestone / sett surface | +8 m |
+| gravel / sand | +10 m |
+| ground / dirt / grass | +6 m |
+| surface unknown | +2 m |
+| kerb raised | +5 m |
+| kerb unknown | +3 m |
+| wheelchair unknown / limited | +2 m |
+| wheelchair = no | +9999 m (effectively blocked) |
 
-**test_graph_builder.py** — run this to verify everything works on your
-machine.
+The haversine heuristic is admissible, so A\* returns the cost-optimal path.
 
-```bash
-python test_graph_builder.py
-```
+---
 
-**data/** — auto-generated folder containing cached graphs.
-Do not commit this folder to GitHub.
+## MDP setup
+
+Each graph node is a state; each directed edge is an action. Edge costs are
+computed by `CityRouting.get_cost(WEIGHTS, weather)`:
+
+- `WEIGHTS = {"w": 0.1, "l": 0.4, "s": 0.3, "sf": 0.2}` (wheelchair, length, slope, surface)
+- `weather` is an integer 0–5 scaling slope and surface penalties
+
+Stochastic transitions model crowd density via `p_crowd` per edge: the agent
+reaches the next node with probability `1 − p_crowd` or stays in place with
+probability `p_crowd`.
+
+Value iteration parameters (selected by grid search):
+
+| Parameter | Value |
+|-----------|-------|
+| γ (discount factor) | 1.0 |
+| ε (convergence threshold) | 0.1 |
+| crowd wait penalty | −1 |
+| max iterations | 10 000 |
+
+---
+
+## Confidence score
+
+Every CSP solution reports a confidence score: the weighted fraction of edge
+attributes on the route that are real OSM values rather than defaults.
+
+| Attribute | Weight |
+|-----------|--------|
+| kerb | 30 % |
+| wheelchair | 30 % |
+| slope | 20 % |
+| width | 15 % |
+| surface | 5 % |
+
+| Score | Meaning |
+|-------|---------|
+| 90–100 % | Route is reliable |
+| 70–89 % | Route is fairly reliable |
+| 50–69 % | Some data estimated — verify before setting off |
+| 0–49 % | Insufficient data — verify before setting off |
+
+---
+
+## A note on OSM data quality
+
+Results may look worse than expected. This reflects the real state of
+accessibility data in Brussels, not a flaw in the algorithms.
+
+Fewer than 15% of Brussels edges carry explicit kerb or wheelchair tags.
+The remaining edges receive conservative defaults, which the CSP treats as
+potentially inaccessible — causing detours and occasional failure even in
+areas that are physically accessible. The algorithm is being honest about
+what the data says.
+
+Slope values are derived from 30 m SRTM elevation data; on very short
+segments this can introduce noise. Width and wheelchair tags are maintained
+by volunteers and may be outdated.
+
+The confidence score quantifies this uncertainty directly. The ~85% score
+observed across all benchmark scenarios reflects the shared injected
+substrate rather than raw OSM coverage, which is far sparser.
