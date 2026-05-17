@@ -13,8 +13,8 @@ from pathlib import Path
 import osmnx as ox
 import matplotlib.pyplot as plt
 
-from graph_builder import load_or_download
-from astar import astar_manual, dijkstra_manual, path_metrics
+from utils.graph_builder import load_or_download
+from method_astar.astar import astar_manual, dijkstra_manual, path_metrics
 
 
 # 8 pairs across Brussels, covering short, medium and long distances.

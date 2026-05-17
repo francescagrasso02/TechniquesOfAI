@@ -8,7 +8,7 @@ import pandas as pd
 from utils.graph_builder import load_or_download
 from method_csp.csp import solve as csp_solve, path_metrics as csp_path_metrics
 from method_astar.astar import astar_manual, path_metrics as astar_path_metrics
-from method_mdp.mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, compute_path_cost
+from method_mdp.mdp import value_iteration, get_policy, apply_policy, N_ITERATIONS, GAMMA, compute_path_cost,EPSILON,PENALTY
 from utils.grid import CityRouting, WEIGHTS
 from utils.config import inject_shared_random_attributes
 
@@ -238,7 +238,7 @@ def run_scenario(scenario, weather, margin, n):
 
     # MDP
     t0 = time.perf_counter()
-    value_iteration(city, N_ITERATIONS, goal_node, GAMMA)
+    value_iteration(city, N_ITERATIONS, goal_node,PENALTY ,EPSILON)
     get_policy(city, GAMMA)
     mdp_path = apply_policy(city, origin_node, goal_node)
     mdp_time = (time.perf_counter() - t0) * 1000
