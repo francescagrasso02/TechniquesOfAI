@@ -236,6 +236,7 @@ def run_scenario(scenario, weather, margin, n):
     else:
         rows.append({'name': 'A*', 'found': False})
 
+    city.get_cost(WEIGHTS,weather)    
     # MDP
     t0 = time.perf_counter()
     value_iteration(city, N_ITERATIONS, goal_node,PENALTY ,EPSILON)
