@@ -267,7 +267,7 @@ def run_scenario(scenario, weather, margin, n):
     # Use G_csp because if CSP escalated to a larger area, it contains all
     # nodes of the default G, so other path nodes are still lookupable.
     folium_map = build_folium_map(G_csp, paths, center)
-    folium_map.save(f"maps_sunny/map_scenario_{n}.html")
+    folium_map.save(f"maps/map_scenario_{n}.html")
     print(f"\n  map saved to map_scenario_{n}.html")
 
     for r in rows:
@@ -287,6 +287,6 @@ if __name__ == '__main__':
     cols_order = ['scenario', 'name', 'found', 'length_m', 'time_ms', 'cost', 'confidence', 'expanded']
     df = df[cols_order]
 
-    df.to_csv("final_benchmark_results_sunny.csv", index=False)
-    print("Benchmark results saved in: 'final_benchmark_results_sunny.csv'")
+    df.to_csv("final_benchmark_results.csv", index=False)
+    print("Benchmark results saved in: 'final_benchmark_results.csv'")
     print(df.head(10))
