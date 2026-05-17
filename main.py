@@ -157,7 +157,6 @@ def run_scenario(scenario, weather, margin, n):
     paths = {}
 
     city = CityRouting(G)
-    city.get_cost(WEIGHTS,weather)
 
     origin_node = nearest_node(G, origin)
     goal_node   = nearest_node(G, destination)
