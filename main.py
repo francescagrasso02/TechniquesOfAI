@@ -78,6 +78,7 @@ def csp_with_escalation(origin, destination, default_margin, G_default):
         if G is None:
             if G_larger is None:
                 G_larger = load_or_download(origin, destination, m)
+                G_larger = inject_shared_random_attributes(G_larger)
             G = G_larger
 
         result = csp_solve(G, origin, destination, mode=csp_mode)
